@@ -31,7 +31,7 @@ def existing_ratings():
         yield id_
 
 
-def toot_explore():
+def toot_explore(max_single_explore = 50):
     existing = set(existing_ratings())
 
     count = 0
@@ -47,10 +47,10 @@ def toot_explore():
             continue
 
         count += 1
-        if count > 50:
+        if count > max_single_explore:
             break
 
-        print("\n=== Content ===\n")
+        print("\n=== Content %3d / %3d ===\n" % (count, max_single_explore,))
         print(content)
 
         result = input("\n- dislike + like else skip ")
@@ -87,7 +87,7 @@ for idx, row in enumerate(
     )
 ):
     id_, author, content, score, shuffler = row
-    print('\n', score, content)
+    print("\n", score, content)
     if idx > 3:
         break
 
@@ -98,6 +98,6 @@ for idx, row in enumerate(
     )
 ):
     id_, author, content, score, shuffler = row
-    print('\n', score, content)
+    print("\n", score, content)
     if idx > 3:
         break

@@ -18,7 +18,10 @@ print(min_id_in_db)
 
 # API Setup
 mastodon = Mastodon(
-    api_base_url="https://fosstodon.org", user_agent="formakio", ratelimit_method="wait"
+    api_base_url="https://fosstodon.org",
+    user_agent="formakio",
+    ratelimit_method="wait",
+    ratelimit_pacefactor=0.95,
 )
 
 
