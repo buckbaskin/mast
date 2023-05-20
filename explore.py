@@ -31,7 +31,8 @@ def existing_ratings():
         yield id_
 
 
-def toot_explore(max_single_explore = 50):
+def toot_explore(max_single_explore = 20):
+    hard_cap = max_single_explore * 2
     existing = set(existing_ratings())
 
     count = 0
@@ -47,27 +48,28 @@ def toot_explore(max_single_explore = 50):
             continue
 
         count += 1
-        if count > max_single_explore:
+        if count > max_single_explore or count > hard_cap:
             break
 
-        print("\n=== Content %3d / %3d ===\n" % (count, max_single_explore,))
-        print(content)
+        print("\n=== Content %3d / %3d ===\n%s" % (count, max_single_explore, content))
 
-        result = input("\n- dislike + like else skip ")
+        result = input("- dislike + like else skip ")
 
         if result in ["-", "=", "+", "0"]:
             if result == "-":
-                print("-")
+                # print("-")
                 yield (id_, author, content, -1)
             elif result == "=" or result == "+":
-                print("+")
+                print("...   + bonus!")
+                max_single_explore += 1
                 yield (id_, author, content, 1)
             elif result == "0":
-                print("0")
+                # print("0")
                 yield (id_, author, content, 0)
 
         else:
-            print("skipped")
+            # print("skipped")
+            pass
 
 
 to_write = list(toot_explore())
