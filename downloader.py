@@ -64,7 +64,7 @@ def as_db_tuples():
     for idx, toot in tqdm(
         enumerate(toot_stream(mastodon, timeline="local", max_id=min_id_in_db))
     ):
-        if idx >= 10000:
+        if idx >= 1000:
             break
 
         id_ = str(toot["id"])
