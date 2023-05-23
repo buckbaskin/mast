@@ -6,7 +6,7 @@ from time import time
 from typing import List
 
 import numpy as np
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, MiniBatchKMeans
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import make_pipeline
@@ -30,7 +30,7 @@ assert ratings_count > 0
 
 # Nominally, find N=5 similar toots per cluster
 N_CLUSTERS = toots_count // 5
-MAX_NOTES = 3200
+MAX_NOTES = 10000
 
 
 def dataset_from_db():
@@ -41,7 +41,6 @@ def dataset_from_db():
 
     # labels = dataset.target
 
-
     for row in new_cur.execute("SELECT id, author, content, score FROM ratings"):
         if MAX_NOTES is not None and len(data) >= MAX_NOTES:
             break
@@ -50,9 +49,8 @@ def dataset_from_db():
 
         data.append(content)
         data_titles.append((id_, author))
-        target.append(score)
+        target.append(set([score]))
         target_names.append(score)
-
 
     rated_ids = set([d[0] for d in data_titles])
 
@@ -61,7 +59,7 @@ def dataset_from_db():
             break
 
         id_, author, content = row
-    
+
         if id_ in rated_ids:
             continue
 
@@ -69,7 +67,7 @@ def dataset_from_db():
 
         data.append(content)
         data_titles.append((id_, author))
-        target.append(score)
+        target.append(set([score]))
         target_names.append(score)
 
     target_names = sorted(list(set(target_names)))
@@ -157,10 +155,12 @@ def vectorize_and_reduce(dataset):
     rng.shuffle(shuffle_tokens)
     print(", ".join(shuffle_tokens[:50]))
 
-    kmeans = KMeans(
+    kmeans = MiniBatchKMeans(
         n_clusters=min(N_CLUSTERS, n_documents),
         max_iter=300,
-        n_init=10,
+        n_init=1,
+        init_size=1000,  # arbitrary
+        batch_size=1000,  # arbitrary
         random_state=1969,
     )
 
@@ -192,3 +192,91 @@ def vectorize_and_reduce(dataset):
 X_lsa, tokens, n_documents, original_space_centroids, kmeans = vectorize_and_reduce(
     dataset
 )
+
+order_centroids = np.argsort(original_space_centroids)[:, ::-1]
+
+DISPLAY_COUNT = min(N_CLUSTERS, n_documents)
+
+print("Attempting to open file")
+
+with open("data/clusters.out", "w") as f:
+    print("File opened")
+
+    for cluster_id in tqdm(range(DISPLAY_COUNT)):
+        write_buffer = []
+
+        kmeans_select = kmeans.labels_ == cluster_id
+        notes_in_cluster = np.count_nonzero(kmeans_select)
+
+        # print(f"\nCluster {cluster_id} (x{notes_in_cluster}): ", end="")
+        write_buffer.append(f"\nCluster {cluster_id} (x{notes_in_cluster}): ")
+        for ind in order_centroids[cluster_id, :10]:
+            write_buffer.append(f"{tokens[ind]}, ")
+        write_buffer.append("\n")
+
+        tags = defaultdict(int)
+        for idx, label in enumerate(kmeans.labels_):
+            if label == cluster_id:
+                for tag in dataset.target[idx]:
+                    tags[tag] += 1
+
+        likely_tag_found = False
+        if notes_in_cluster > 3:
+            for tag, count_in_cluster in tags.items():
+                # Tag looks like it describes the majority of the cluster
+                if count_in_cluster > notes_in_cluster // 2:
+                    write_buffer.append(f"Likely Cluster Tag: {tag}\n")
+                    likely_tag_found = True
+
+        max_count = -1
+
+        for idx, label in enumerate(kmeans.labels_):
+            tags_for_document = dataset.target[idx]
+
+            annotation = []
+            for tag in tags_for_document:
+                if tags[tag] > notes_in_cluster // 2:
+                    # likely
+                    annotation.append(f"#{tag}")
+
+            if label == cluster_id:
+                title = dataset.data_titles[idx]
+                write_buffer.append(f"    - {title} {','.join(annotation)}\n")
+                max_count -= 1
+            if max_count == 0:
+                write_buffer.append("    - ...\n")
+                break
+
+        write_buffer.append("Complete Tags:\n")
+        write_buffer.append(
+            str(
+                sorted(
+                    [
+                        (tag, count)
+                        for tag, count in tags.items()
+                        if count == notes_in_cluster
+                    ],
+                    key=lambda x: (-x[1], x[0]),
+                )[:5]
+            )
+        )
+        write_buffer.append("\n")
+        write_buffer.append("Top Incomplete Tags:\n")
+        write_buffer.append(
+            str(
+                sorted(
+                    [
+                        (tag, count)
+                        for tag, count in tags.items()
+                        if 0 < count < notes_in_cluster
+                    ],
+                    key=lambda x: (-x[1], x[0]),
+                )[:5]
+            )
+        )
+        write_buffer.append("\n")
+        write_result = "".join(write_buffer)
+        # print(f"Trying writing len {len(write_result)}")
+        f.write(write_result)
+
+print("\nDone")
