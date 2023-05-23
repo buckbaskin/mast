@@ -18,10 +18,16 @@ pip install -r requirements.txt
 python3 downloader.py
 ```
 
-### Explore options by sampling and rating content
+### Explore options by pseudo-random sampling and rating content
 
 ```
 python3 explore.py
+```
+
+### Explore options by exploring content "near" to liked content
+
+```
+python3 bandity.py
 ```
 
 ### View the results
