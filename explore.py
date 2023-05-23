@@ -31,16 +31,14 @@ def existing_ratings():
         yield id_
 
 
-def toot_explore(max_single_explore = 20):
+def toot_explore(max_single_explore=20):
     hard_cap = max_single_explore * 2
     existing = set(existing_ratings())
 
     count = 0
 
-    for idx, row in enumerate(
-        new_cur.execute(
-            "SELECT id, author, content, (75 * id + 74) % 65537 FROM toots ORDER BY (75 * id + 74) % 65537"
-        )
+    for row in new_cur.execute(
+        "SELECT id, author, content, (75 * id + 74) % 65537 FROM toots ORDER BY (75 * id + 74) % 65537"
     ):
         id_, author, content, hash_ = row
 

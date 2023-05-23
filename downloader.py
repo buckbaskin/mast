@@ -1,6 +1,4 @@
-import os
 from mastodon import Mastodon
-from pprint import pprint
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 import sqlite3
@@ -67,7 +65,6 @@ def as_db_tuples():
         if idx >= 1000:
             break
 
-        id_ = str(toot["id"])
         flattened_username = " ".join(toot["account"]["acct"].split())
         content = "\n".join(cli_render(toot["content"]))
 

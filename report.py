@@ -4,7 +4,6 @@ Report: Show authors whose content you like, ordered by the amount of their cont
 import sqlite3
 from itertools import chain
 import shutil
-import os
 
 # Database Setup
 con = sqlite3.connect("data/db.db")
@@ -12,7 +11,7 @@ cur = con.cursor()
 
 existing_tables = cur.execute("SELECT name from sqlite_master")
 if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
-    raise ValueError('ratings table not in data/db.db')
+    raise ValueError("ratings table not in data/db.db")
 
 
 new_con = sqlite3.connect("data/db.db")
@@ -22,9 +21,11 @@ new_cur = new_con.cursor()
 
 print("Number of Ratings So Far:", row_count)
 
-(row_count,) = new_cur.execute("select count(id) from ratings where score > 0").fetchone()
+(row_count,) = new_cur.execute(
+    "select count(id) from ratings where score > 0"
+).fetchone()
 
-print('Number of positive ratings', row_count)
+print("Number of positive ratings", row_count)
 
 ####
 padding = len(str(row_count))
@@ -33,12 +34,17 @@ terminal_width = shutil.get_terminal_size((100, 20)).columns
 fudge_factor = 2
 remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
 
-for idx, row in enumerate(
-    new_cur.execute(
-        "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
-    )
+for row in new_cur.execute(
+    "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
 ):
-    author, positive_cases, example_content  = row
+    author, positive_cases, example_content = row
 
-    print(' '.join([str(positive_cases).rjust(padding), author.ljust(author_padding), example_content[:remaining]]))
-
+    print(
+        " ".join(
+            [
+                str(positive_cases).rjust(padding),
+                author.ljust(author_padding),
+                example_content[:remaining],
+            ]
+        )
+    )
