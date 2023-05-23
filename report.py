@@ -3,6 +3,8 @@ Report: Show authors whose content you like, ordered by the amount of their cont
 """
 import sqlite3
 from itertools import chain
+import shutil
+import os
 
 # Database Setup
 con = sqlite3.connect("data/db.db")
@@ -27,7 +29,9 @@ print('Number of positive ratings', row_count)
 ####
 padding = len(str(row_count))
 author_padding = 20
-remaining = 120 - padding - author_padding
+terminal_width = shutil.get_terminal_size((100, 20)).columns
+fudge_factor = 2
+remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
 
 for idx, row in enumerate(
     new_cur.execute(
@@ -36,5 +40,5 @@ for idx, row in enumerate(
 ):
     author, positive_cases, example_content  = row
 
-    print(str(positive_cases).rjust(padding), author.ljust(author_padding), example_content[:remaining])
+    print(' '.join([str(positive_cases).rjust(padding), author.ljust(author_padding), example_content[:remaining]]))
 
