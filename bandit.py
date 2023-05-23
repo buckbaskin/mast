@@ -202,17 +202,18 @@ print("Attempting to open file")
 with open("data/clusters.out", "w") as f:
     print("File opened")
 
-    for cluster_id in tqdm(range(DISPLAY_COUNT)):
+    for idx, cluster_id in enumerate(tqdm(range(DISPLAY_COUNT))):
+        if idx > N_CLUSTERS:
+            # Essentially not taking this break code path
+            break
+
         write_buffer = []
 
         kmeans_select = kmeans.labels_ == cluster_id
         notes_in_cluster = np.count_nonzero(kmeans_select)
 
-        # print(f"\nCluster {cluster_id} (x{notes_in_cluster}): ", end="")
-        write_buffer.append(f"\nCluster {cluster_id} (x{notes_in_cluster}): ")
-        for ind in order_centroids[cluster_id, :10]:
-            write_buffer.append(f"{tokens[ind]}, ")
-        write_buffer.append("\n")
+        if notes_in_cluster < 2:
+            continue
 
         tags = defaultdict(int)
         for idx, label in enumerate(kmeans.labels_):
@@ -220,13 +221,33 @@ with open("data/clusters.out", "w") as f:
                 for tag in dataset.target[idx]:
                     tags[tag] += 1
 
-        likely_tag_found = False
-        if notes_in_cluster > 3:
-            for tag, count_in_cluster in tags.items():
-                # Tag looks like it describes the majority of the cluster
-                if count_in_cluster > notes_in_cluster // 2:
-                    write_buffer.append(f"Likely Cluster Tag: {tag}\n")
-                    likely_tag_found = True
+        confusion = min(tags[-1], tags[1])  # larger when both are larger
+        positive = tags[1]
+        negative = tags[-1]
+
+        # at this point, if I wanted to ask the user for ratings, I could
+        # yield {
+        #     "confusion": confusion,
+        #     "positive": positive,
+        #     "negative": negative,
+        #     "cluster_id": cluster_id,
+        # }
+        # And then sort by confusion (more learnings) or positive (more likelihood of likes) or negative (more likelihood of rejects)
+
+        if tags[1] > 0:
+            write_buffer.append("\n")
+            if tags[-1] > 0:
+                write_buffer.append("Maybe ")
+            write_buffer.append(
+                f"Recommended Content: c {confusion} + {positive} - {negative}\n"
+            )
+
+        # print(f"\nCluster {cluster_id} (x{notes_in_cluster}): ", end="")
+        write_buffer.append(f"Cluster {cluster_id} (x{notes_in_cluster}): ")
+        top_word_contents_in_cluster = order_centroids[cluster_id, :10]
+        for ind in top_word_contents_in_cluster:
+            write_buffer.append(f"{tokens[ind]}, ")
+        write_buffer.append("\n")
 
         max_count = -1
 
@@ -235,48 +256,20 @@ with open("data/clusters.out", "w") as f:
 
             annotation = []
             for tag in tags_for_document:
-                if tags[tag] > notes_in_cluster // 2:
-                    # likely
-                    annotation.append(f"#{tag}")
+                annotation.append(f"#{tag}")
 
             if label == cluster_id:
+                content = dataset.data[idx]
                 title = dataset.data_titles[idx]
-                write_buffer.append(f"    - {title} {','.join(annotation)}\n")
+                write_buffer.append(f"    - {title} {','.join(annotation)} {content}\n")
                 max_count -= 1
             if max_count == 0:
                 write_buffer.append("    - ...\n")
                 break
 
-        write_buffer.append("Complete Tags:\n")
-        write_buffer.append(
-            str(
-                sorted(
-                    [
-                        (tag, count)
-                        for tag, count in tags.items()
-                        if count == notes_in_cluster
-                    ],
-                    key=lambda x: (-x[1], x[0]),
-                )[:5]
-            )
-        )
-        write_buffer.append("\n")
-        write_buffer.append("Top Incomplete Tags:\n")
-        write_buffer.append(
-            str(
-                sorted(
-                    [
-                        (tag, count)
-                        for tag, count in tags.items()
-                        if 0 < count < notes_in_cluster
-                    ],
-                    key=lambda x: (-x[1], x[0]),
-                )[:5]
-            )
-        )
-        write_buffer.append("\n")
-        write_result = "".join(write_buffer)
-        # print(f"Trying writing len {len(write_result)}")
-        f.write(write_result)
+        if tags[1] > 0:
+            write_result = "".join(write_buffer)
+            # print(f"Trying writing len {len(write_result)}")
+            f.write(write_result)
 
 print("\nDone")
