@@ -26,6 +26,8 @@ print('Number of positive ratings', row_count)
 
 ####
 padding = len(str(row_count))
+author_padding = 20
+remaining = 120 - padding - author_padding
 
 for idx, row in enumerate(
     new_cur.execute(
@@ -34,6 +36,5 @@ for idx, row in enumerate(
 ):
     author, positive_cases, example_content  = row
 
-    print(str(positive_cases).ljust(padding), author)
-    print('   -', example_content)
+    print(str(positive_cases).rjust(padding), author.ljust(author_padding), example_content[:remaining])
 
