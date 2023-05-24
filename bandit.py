@@ -197,17 +197,25 @@ order_centroids = np.argsort(original_space_centroids)[:, ::-1]
 
 DISPLAY_COUNT = min(N_CLUSTERS, n_documents)
 
-print("Attempting to open file")
+ClusteredToot = namedtuple(
+    "ClusteredToot",
+    [
+        "id",
+        "author",
+        "content",
+        "cluster_confusion",
+        "cluster_positive",
+        "cluster_negative",
+        "cluster_id",
+    ],
+)
 
-with open("data/clusters.out", "w") as f:
-    print("File opened")
 
+def stream_clusters():
     for idx, cluster_id in enumerate(tqdm(range(DISPLAY_COUNT))):
-        if idx > N_CLUSTERS:
+        if idx > 1000:
             # Essentially not taking this break code path
             break
-
-        write_buffer = []
 
         kmeans_select = kmeans.labels_ == cluster_id
         notes_in_cluster = np.count_nonzero(kmeans_select)
@@ -225,32 +233,6 @@ with open("data/clusters.out", "w") as f:
         positive = tags[1]
         negative = tags[-1]
 
-        # at this point, if I wanted to ask the user for ratings, I could
-        # yield {
-        #     "confusion": confusion,
-        #     "positive": positive,
-        #     "negative": negative,
-        #     "cluster_id": cluster_id,
-        # }
-        # And then sort by confusion (more learnings) or positive (more likelihood of likes) or negative (more likelihood of rejects)
-
-        if tags[1] > 0:
-            write_buffer.append("\n")
-            if tags[-1] > 0:
-                write_buffer.append("Maybe ")
-            write_buffer.append(
-                f"Recommended Content: c {confusion} + {positive} - {negative}\n"
-            )
-
-        # print(f"\nCluster {cluster_id} (x{notes_in_cluster}): ", end="")
-        write_buffer.append(f"Cluster {cluster_id} (x{notes_in_cluster}): ")
-        top_word_contents_in_cluster = order_centroids[cluster_id, :10]
-        for ind in top_word_contents_in_cluster:
-            write_buffer.append(f"{tokens[ind]}, ")
-        write_buffer.append("\n")
-
-        max_count = -1
-
         for idx, label in enumerate(kmeans.labels_):
             tags_for_document = dataset.target[idx]
 
@@ -261,15 +243,42 @@ with open("data/clusters.out", "w") as f:
             if label == cluster_id:
                 content = dataset.data[idx]
                 title = dataset.data_titles[idx]
-                write_buffer.append(f"    - {title} {','.join(annotation)} {content}\n")
-                max_count -= 1
-            if max_count == 0:
-                write_buffer.append("    - ...\n")
-                break
 
-        if tags[1] > 0:
-            write_result = "".join(write_buffer)
-            # print(f"Trying writing len {len(write_result)}")
-            f.write(write_result)
+                id_, author = title
+                yield ClusteredToot(
+                    **{
+                        "id": id_,
+                        "author": author,
+                        "content": content,
+                        "cluster_confusion": confusion,
+                        "cluster_positive": positive,
+                        "cluster_negative": negative,
+                        "cluster_id": cluster_id,
+                    }
+                )
+
+
+existing_ratings = set((i for (i,) in new_cur.execute("SELECT id FROM ratings")))
+
+clustered_content = sorted(
+    list(
+        filter(
+            lambda x: x.id not in existing_ratings,
+            filter(lambda x: x.cluster_positive > 0, stream_clusters()),
+        )
+    ),
+    key=lambda x: x.cluster_positive,
+    reverse=True,
+)
+
+count = 0
+for toot in clustered_content:
+    if count >= 5:
+        break
+
+    print(toot)
+
+    count += 1
+
 
 print("\nDone")
