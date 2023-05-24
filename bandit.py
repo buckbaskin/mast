@@ -233,6 +233,7 @@ def stream_clusters():
         positive = tags[1]
         negative = tags[-1]
 
+        samples_from_cluster = 0
         for idx, label in enumerate(kmeans.labels_):
             tags_for_document = dataset.target[idx]
 
@@ -241,6 +242,8 @@ def stream_clusters():
                 annotation.append(f"#{tag}")
 
             if label == cluster_id:
+                samples_from_cluster += 1
+
                 content = dataset.data[idx]
                 title = dataset.data_titles[idx]
 
@@ -257,26 +260,62 @@ def stream_clusters():
                     }
                 )
 
+                if samples_from_cluster > 5:
+                    continue
 
-existing_ratings = set((i for (i,) in new_cur.execute("SELECT id FROM ratings")))
 
-clustered_content = sorted(
-    list(
-        filter(
-            lambda x: x.id not in existing_ratings,
-            filter(lambda x: x.cluster_positive > 0, stream_clusters()),
+def toot_cluster_rate(max_single_explore=20):
+    hard_cap = max_single_explore * 2
+    existing_ratings = set((i for (i,) in new_cur.execute("SELECT id FROM ratings")))
+
+    clustered_content = sorted(
+        list(
+            filter(
+                lambda x: x.id not in existing_ratings,
+                filter(lambda x: x.cluster_positive > 0, stream_clusters()),
+            )
+        ),
+        key=lambda x: x.cluster_positive,
+        reverse=True,
+    )
+
+    count = 0
+
+    for row in clustered_content:
+        id_, author, content, confusion, positive, negative, cluster_id = row
+
+        count += 1
+        if count > max_single_explore or count > hard_cap:
+            break
+
+        print(
+            "\n=== Content (%3d) %3d / %3d ===\n%s"
+            % (positive, count, max_single_explore, content)
         )
-    ),
-    key=lambda x: x.cluster_positive,
-    reverse=True,
-)
+
+        result = input("- dislike + like else skip ")
+
+        if result in ["-", "=", "+", "0"]:
+            if result == "-":
+                # print("-")
+                yield (id_, author, content, -1)
+            elif result == "=" or result == "+":
+                print("...   + bonus!")
+                max_single_explore += 1
+                yield (id_, author, content, 1)
+            elif result == "0":
+                # print("0")
+                yield (id_, author, content, 0)
+
+        else:
+            # print("skipped")
+            pass
+
 
 count = 0
-for toot in clustered_content:
+for toot in toot_cluster_rate():
     if count >= 5:
         break
-
-    print(toot)
 
     count += 1
 
