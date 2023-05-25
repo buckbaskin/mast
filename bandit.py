@@ -308,16 +308,37 @@ def toot_cluster_rate(max_single_explore=20):
                 yield (id_, author, content, 0)
 
         else:
-            # print("skipped")
             pass
 
 
-count = 0
-for toot in toot_cluster_rate():
-    if count >= 5:
+to_write = list(toot_cluster_rate())
+
+print("Prepared to write %d examples" % (len(to_write),))
+
+new_cur.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
+new_con.commit()
+
+(row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+print("How it's going: Ratings So Far:", row_count)
+
+print("\n=== Sample Positive Ratings ===")
+for idx, row in enumerate(
+    new_cur.execute(
+        "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
+    )
+):
+    id_, author, content, score, shuffler = row
+    print("\n", score, content)
+    if idx > 3:
         break
 
-    count += 1
-
-
-print("\nDone")
+print("\n=== Sample Negative Ratings ===")
+for idx, row in enumerate(
+    new_cur.execute(
+        "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
+    )
+):
+    id_, author, content, score, shuffler = row
+    print("\n", score, content)
+    if idx > 3:
+        break
