@@ -5,46 +5,51 @@ import sqlite3
 from itertools import chain
 import shutil
 
-# Database Setup
-con = sqlite3.connect("data/db.db")
-cur = con.cursor()
 
-existing_tables = cur.execute("SELECT name from sqlite_master")
-if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
-    raise ValueError("ratings table not in data/db.db")
+def report_impl(toots_limit):
+    # Database Setup
+    con = sqlite3.connect("data/db.db")
+    cur = con.cursor()
 
+    existing_tables = cur.execute("SELECT name from sqlite_master")
+    if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
+        raise ValueError("ratings table not in data/db.db")
 
-new_con = sqlite3.connect("data/db.db")
-new_cur = new_con.cursor()
+    new_con = sqlite3.connect("data/db.db")
+    new_cur = new_con.cursor()
 
-(row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+    (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
 
-print("Number of Ratings So Far:", row_count)
+    print("Number of Ratings So Far:", row_count)
 
-(row_count,) = new_cur.execute(
-    "select count(id) from ratings where score > 0"
-).fetchone()
+    (row_count,) = new_cur.execute(
+        "select count(id) from ratings where score > 0"
+    ).fetchone()
 
-print("Number of positive ratings", row_count)
+    print("Number of positive ratings", row_count)
 
-####
-padding = len(str(row_count))
-author_padding = 20
-terminal_width = shutil.get_terminal_size((100, 20)).columns
-fudge_factor = 2
-remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
+    ####
+    padding = len(str(row_count))
+    author_padding = 20
+    terminal_width = shutil.get_terminal_size((100, 20)).columns
+    fudge_factor = 2
+    remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
 
-for row in new_cur.execute(
-    "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
-):
-    author, positive_cases, example_content = row
+    for row in new_cur.execute(
+        "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
+    ):
+        author, positive_cases, example_content = row
 
-    print(
-        " ".join(
-            [
-                str(positive_cases).rjust(padding),
-                author.ljust(author_padding),
-                example_content[:remaining],
-            ]
+        print(
+            " ".join(
+                [
+                    str(positive_cases).rjust(padding),
+                    author.ljust(author_padding),
+                    example_content[:remaining],
+                ]
+            )
         )
-    )
+
+
+if __name__ == "__main__":
+    report_impl(20)
