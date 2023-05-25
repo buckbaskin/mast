@@ -2,6 +2,8 @@
 
 Tools for discovering and recommendating new accounts to follow on Mastodon
 
+<img alt="Square Rigger Sailing Vessel with five square sails and four jibs on a blue background." src="mast.png">
+
 ## Example Workflow
 
 ### Setup
