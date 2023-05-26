@@ -89,6 +89,7 @@ def main():
     clean.set_defaults(func=clean_impl)
 
     report = subparsers.add_parser("report")
+    report.add_argument('-n', '--count', help='Number of authors to report', type=int, default=20)
     report.set_defaults(func=report_impl)
 
     args = parser.parse_args()

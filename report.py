@@ -6,7 +6,9 @@ from itertools import chain
 import shutil
 
 
-def report_impl(toots_limit):
+def report_impl(parsed_args):
+    author_limit = parsed_args.count
+
     # Database Setup
     con = sqlite3.connect("data/db.db")
     cur = con.cursor()
@@ -35,9 +37,12 @@ def report_impl(toots_limit):
     fudge_factor = 2
     remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
 
-    for row in new_cur.execute(
+    for idx, row in enumerate(new_cur.execute(
         "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
-    ):
+    )):
+        if idx >= author_limit:
+            break
+
         author, positive_cases, example_content = row
 
         print(
