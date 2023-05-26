@@ -23,7 +23,6 @@ def cluster_impl(toots_limit, sort_by):
     (toots_count,) = new_cur.execute("select count(id) from toots").fetchone()
     (ratings_count,) = new_cur.execute("select count(id) from ratings").fetchone()
 
-    print("How it started: Ratings So Far:", ratings_count)
     assert ratings_count > 0
 
     # Nominally, find N=5 similar toots per cluster
@@ -83,10 +82,6 @@ def cluster_impl(toots_limit, sort_by):
     dataset = dataset_from_db()
 
     def vectorize_and_reduce(dataset):
-        print(f"# Tags {len(dataset.target_names)}")
-        print(dataset.target_names)
-
-        print()
         print("# Dataset Summary")
         print(f"{len(dataset.data)} documents - {len(dataset.target_names)} tags")
 

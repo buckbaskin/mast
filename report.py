@@ -37,9 +37,11 @@ def report_impl(parsed_args):
     fudge_factor = 2
     remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
 
-    for idx, row in enumerate(new_cur.execute(
-        "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
-    )):
+    for idx, row in enumerate(
+        new_cur.execute(
+            "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
+        )
+    ):
         if idx >= author_limit:
             break
 

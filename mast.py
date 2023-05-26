@@ -28,8 +28,6 @@ def bandit_impl(parsed_args):
     else:
         user_selection = user_selection[0][0]
 
-    print("user_selection", user_selection)
-
     {
         "confusion": partial(cluster_impl, sort_by="confusion"),
         "explore": explore_impl,
@@ -89,7 +87,9 @@ def main():
     clean.set_defaults(func=clean_impl)
 
     report = subparsers.add_parser("report")
-    report.add_argument('-n', '--count', help='Number of authors to report', type=int, default=20)
+    report.add_argument(
+        "-n", "--count", help="Number of authors to report", type=int, default=20
+    )
     report.set_defaults(func=report_impl)
 
     args = parser.parse_args()

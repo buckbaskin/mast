@@ -20,10 +20,6 @@ def explore_impl(toots_limit):
 
     (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
 
-    print("How it started: Ratings So Far:", row_count)
-
-    print("Random toots:")
-
     def existing_ratings():
         for (id_,) in new_cur.execute(
             "SELECT id from ratings ORDER BY 75 * id + 74 % 65537"
@@ -72,13 +68,10 @@ def explore_impl(toots_limit):
 
     to_write = list(toot_explore(toots_limit))
 
-    print("Prepared to write %d examples" % (len(to_write),))
-
     new_cur.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
     new_con.commit()
 
     (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
-    print("How it's going: Ratings So Far:", row_count)
 
     print("\n=== Sample Positive Ratings ===")
     for idx, row in enumerate(
