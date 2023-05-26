@@ -5,7 +5,9 @@ import sqlite3
 from itertools import chain
 
 
-def download_impl(toots_limit):
+def download_impl(parsed_args):
+    toots_limit = parsed_args.toots
+
     # Database Setup
     con = sqlite3.connect("data/db.db")
     cur = con.cursor()
@@ -56,11 +58,13 @@ def download_impl(toots_limit):
             yield from page
             page = m.fetch_next(page._pagination_next)
 
-    def as_db_tuples():
+    def as_db_tuples(toots_limit):
+        skipped = 0
+
         for idx, toot in tqdm(
             enumerate(toot_stream(mastodon, timeline="local", max_id=min_id_in_db))
         ):
-            if idx >= 1000:
+            if idx >= toots_limit + skipped:
                 break
 
             flattened_username = " ".join(toot["account"]["acct"].split())
@@ -68,9 +72,13 @@ def download_impl(toots_limit):
 
             if len(content) > 0:
                 yield toot["id"], flattened_username, content
+            else:
+                skipped += 1
+
+    (pre_row_count,) = cur.execute("select count(id) from toots").fetchone()
 
     try:
-        cur.executemany("INSERT INTO toots VALUES(?, ?, ?)", as_db_tuples())
+        cur.executemany("INSERT INTO toots VALUES(?, ?, ?)", as_db_tuples(toots_limit))
         con.commit()
     finally:
         con.close()
@@ -82,7 +90,7 @@ def download_impl(toots_limit):
 
     (row_count,) = new_cur.execute("select count(id) from toots").fetchone()
 
-    print("Toots So Far:", row_count)
+    print("Toots So Far:", row_count, 'Added:', row_count - pre_row_count)
 
     for idx, row in enumerate(
         new_cur.execute("SELECT id, author, content FROM toots ORDER BY id")
