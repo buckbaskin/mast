@@ -16,7 +16,7 @@ TootContent = namedtuple(
 )
 
 
-def cluster_impl(toots_limit, sort_by="positive"):
+def cluster_impl(toots_limit, sort_by):
     new_con = sqlite3.connect("data/db.db")
     new_cur = new_con.cursor()
 
@@ -252,14 +252,15 @@ def cluster_impl(toots_limit, sort_by="positive"):
                     if samples_from_cluster > 5:
                         continue
 
-    def toot_cluster_rate(max_single_explore=20):
+    def toot_cluster_rate(max_single_explore, sort_by):
         hard_cap = max_single_explore * 2
         existing_ratings = set(
             (i for (i,) in new_cur.execute("SELECT id FROM ratings"))
         )
 
         clustered_content = filter(
-            lambda x: x.cluster_positive > 0 and x.id not in existing_ratings,
+            lambda x: getattr(x, f"cluster_{sort_by}") > 0
+            and x.id not in existing_ratings,
             stream_clusters(),
         )
 
@@ -272,9 +273,15 @@ def cluster_impl(toots_limit, sort_by="positive"):
             if count > max_single_explore or count > hard_cap:
                 break
 
+            rating = {
+                "positive": positive,
+                "negative": negative,
+                "confusion": confusion,
+            }[sort_by]
+
             print(
-                "\n=== Content (%3d) %3d / %3d ===\n%s"
-                % (positive, count, max_single_explore, content)
+                "\n=== Content (%s %3d) %3d / %3d ===\n%s"
+                % (sort_by, rating, count, max_single_explore, content)
             )
 
             result = input("- dislike + like else skip ")
@@ -294,7 +301,7 @@ def cluster_impl(toots_limit, sort_by="positive"):
             else:
                 pass
 
-    to_write = list(toot_cluster_rate(toots_limit))
+    to_write = list(toot_cluster_rate(toots_limit, sort_by))
 
     print("Prepared to write %d examples" % (len(to_write),))
 

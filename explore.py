@@ -30,7 +30,7 @@ def explore_impl(toots_limit):
         ):
             yield id_
 
-    def toot_explore(max_single_explore=20):
+    def toot_explore(max_single_explore):
         hard_cap = max_single_explore * 2
         existing = set(existing_ratings())
 
@@ -70,7 +70,7 @@ def explore_impl(toots_limit):
                 # print("skipped")
                 pass
 
-    to_write = list(toot_explore())
+    to_write = list(toot_explore(toots_limit))
 
     print("Prepared to write %d examples" % (len(to_write),))
 
