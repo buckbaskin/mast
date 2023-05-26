@@ -1,17 +1,13 @@
 import sqlite3
 from collections import defaultdict, namedtuple
-from os import walk
-from os.path import join
 from time import time
-from typing import List
 
 import numpy as np
-from sklearn.cluster import KMeans, MiniBatchKMeans
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
-from tqdm import tqdm
 
 from stopwords import STOP_WORDS
 
@@ -32,7 +28,7 @@ def cluster_impl(toots_limit, sort_by="positive"):
 
     # Nominally, find N=5 similar toots per cluster
     N_CLUSTERS = toots_count // 5
-    MAX_NOTES = 10000
+    MAX_NOTES = None
 
     def dataset_from_db():
         data = []
@@ -193,8 +189,6 @@ def cluster_impl(toots_limit, sort_by="positive"):
         dataset
     )
 
-    order_centroids = np.argsort(original_space_centroids)[:, ::-1]
-
     DISPLAY_COUNT = min(N_CLUSTERS, n_documents)
 
     ClusteredToot = namedtuple(
@@ -211,11 +205,7 @@ def cluster_impl(toots_limit, sort_by="positive"):
     )
 
     def stream_clusters():
-        for idx, cluster_id in enumerate(tqdm(range(DISPLAY_COUNT))):
-            if idx > 1000:
-                # Essentially not taking this break code path
-                break
-
+        for idx, cluster_id in enumerate(range(DISPLAY_COUNT)):
             kmeans_select = kmeans.labels_ == cluster_id
             notes_in_cluster = np.count_nonzero(kmeans_select)
 
@@ -268,15 +258,9 @@ def cluster_impl(toots_limit, sort_by="positive"):
             (i for (i,) in new_cur.execute("SELECT id FROM ratings"))
         )
 
-        clustered_content = sorted(
-            list(
-                filter(
-                    lambda x: x.id not in existing_ratings,
-                    filter(lambda x: x.cluster_positive > 0, stream_clusters()),
-                )
-            ),
-            key=lambda x: x.cluster_positive,
-            reverse=True,
+        clustered_content = filter(
+            lambda x: x.cluster_positive > 0 and x.id not in existing_ratings,
+            stream_clusters(),
         )
 
         count = 0
@@ -310,7 +294,7 @@ def cluster_impl(toots_limit, sort_by="positive"):
             else:
                 pass
 
-    to_write = list(toot_cluster_rate())
+    to_write = list(toot_cluster_rate(toots_limit))
 
     print("Prepared to write %d examples" % (len(to_write),))
 

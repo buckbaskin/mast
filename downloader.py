@@ -90,7 +90,7 @@ def download_impl(parsed_args):
 
     (row_count,) = new_cur.execute("select count(id) from toots").fetchone()
 
-    print("Toots So Far:", row_count, 'Added:', row_count - pre_row_count)
+    print("Toots So Far:", row_count, "Added:", row_count - pre_row_count)
 
     for idx, row in enumerate(
         new_cur.execute("SELECT id, author, content FROM toots ORDER BY id")

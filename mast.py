@@ -8,8 +8,6 @@ from downloader import download_impl
 
 
 def bandit_impl(parsed_args):
-    print("mast bandit", parsed_args)
-
     user_selection = list(
         filter(
             lambda t: t[1],
