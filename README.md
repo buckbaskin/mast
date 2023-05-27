@@ -9,6 +9,11 @@ Tools for discovering and recommendating new accounts to follow on Mastodon
 ### Setup
 
 ```
+git clone https://github.com/buckbaskin/mast.git
+cd mast/
+```
+
+```
 python3 -m virtualenv v/
 source v/bin/activate
 pip install -r requirements.txt
@@ -17,23 +22,23 @@ pip install -r requirements.txt
 ### Source a batch of samples
 
 ```
-python3 downloader.py
+python3 mast.py download -t 1000
 ```
 
 ### Explore options by pseudo-random sampling and rating content
 
 ```
-python3 explore.py
+python3 mast.py bandit --explore 20
 ```
 
 ### Explore options by exploring content "near" to liked content
 
 ```
-python3 bandity.py
+python3 mast.py bandit --positive 20
 ```
 
 ### View the results
 
 ```
-python3 report.py
+python3 mast.py report
 ```
