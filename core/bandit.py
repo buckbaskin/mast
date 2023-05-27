@@ -9,7 +9,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
 
-from stopwords import STOP_WORDS
+from core.stopwords import STOP_WORDS
 
 TootContent = namedtuple(
     "TootContent", ["data", "data_titles", "target", "target_names"]

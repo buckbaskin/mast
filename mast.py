@@ -1,10 +1,10 @@
 import argparse
 from functools import partial
 
-from explore import explore_impl
-from bandit import cluster_impl
-from report import report_impl
-from downloader import download_impl
+from core.explore import explore_impl
+from core.bandit import cluster_impl
+from core.report import report_impl
+from core.downloader import download_impl
 
 
 def bandit_impl(parsed_args):
