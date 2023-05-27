@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import sqlite3
 from itertools import chain
+from config import API_BASE_URL
 
 # Database Setup
 con = sqlite3.connect("data/db.db")
@@ -21,7 +22,7 @@ print("max_id_in_db", max_id_in_db)
 
 # API Setup
 mastodon = Mastodon(
-    api_base_url="https://fosstodon.org", user_agent="formakio", ratelimit_method="wait"
+    api_base_url=API_BASE_URL, user_agent="formakio", ratelimit_method="wait"
 )
 
 

@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import sqlite3
 from itertools import chain
+from config import API_BASE_URL
 
 
 def download_impl(parsed_args):
@@ -20,8 +21,8 @@ def download_impl(parsed_args):
 
     # API Setup
     mastodon = Mastodon(
-        api_base_url="https://fosstodon.org",
-        user_agent="formakio",
+        api_base_url=API_BASE_URL,
+        user_agent="mast.py",
         ratelimit_method="wait",
         ratelimit_pacefactor=0.95,
     )
