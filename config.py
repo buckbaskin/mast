@@ -1,1 +1,1 @@
-API_BASE_URL = 'https://fosstodon.org'
+API_BASE_URL = "https://fosstodon.org"

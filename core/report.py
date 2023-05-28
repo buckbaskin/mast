@@ -1,9 +1,13 @@
 """
 Report: Show authors whose content you like, ordered by the amount of their content that you like
 """
-import sqlite3
-from itertools import chain
 import shutil
+import sqlite3
+
+from itertools import chain
+
+from config import API_BASE_URL
+from core.utils import render_author
 
 
 def report_impl(parsed_args):
@@ -37,6 +41,8 @@ def report_impl(parsed_args):
     fudge_factor = 2
     remaining = max(10, terminal_width - padding - author_padding - fudge_factor)
 
+    host = API_BASE_URL
+
     for idx, row in enumerate(
         new_cur.execute(
             "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
@@ -51,7 +57,7 @@ def report_impl(parsed_args):
             " ".join(
                 [
                     str(positive_cases).rjust(padding),
-                    author.ljust(author_padding),
+                    render_author(author, host).ljust(author_padding),
                     example_content[:remaining],
                 ]
             )

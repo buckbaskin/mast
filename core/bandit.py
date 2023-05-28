@@ -9,7 +9,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import Normalizer
 
+from config import API_BASE_URL
 from core.stopwords import STOP_WORDS
+from core.utils import render_author
 
 TootContent = namedtuple(
     "TootContent", ["data", "data_titles", "target", "target_names"]
@@ -274,9 +276,17 @@ def cluster_impl(toots_limit, sort_by):
                 "confusion": confusion,
             }[sort_by]
 
+            host = API_BASE_URL
             print(
-                "\n=== Content (%s %3d) %3d / %3d ===\n%s"
-                % (sort_by, rating, count, max_single_explore, content)
+                "\n=== Content (%s %3d) %3d / %3d ===\n%s\n    %s"
+                % (
+                    sort_by,
+                    rating,
+                    count,
+                    max_single_explore,
+                    content,
+                    render_author(author, host),
+                )
             )
 
             result = input("- dislike + like else skip ")
