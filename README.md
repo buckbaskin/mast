@@ -28,13 +28,13 @@ python3 mast.py download -t 1000
 ### Explore options by pseudo-random sampling and rating content
 
 ```
-python3 mast.py bandit --explore 20
+python3 mast.py bandit --explore -t 20
 ```
 
 ### Explore options by exploring content "near" to liked content
 
 ```
-python3 mast.py bandit --positive 20
+python3 mast.py bandit --positive -t 20
 ```
 
 ### View the results
