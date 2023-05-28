@@ -9,25 +9,29 @@ from config import API_BASE_URL
 from core.utils import render_author
 
 
-def report_impl(parsed_args):
-    author_limit = parsed_args.count
-
+def database_setup():
     # Database Setup
-    con = sqlite3.connect("data/db.db")
-    cur = con.cursor()
+    db_connection = sqlite3.connect("data/db.db")
+    db_cursor = db_connection.cursor()
 
-    existing_tables = cur.execute("SELECT name from sqlite_master")
+    existing_tables = db_cursor.execute("SELECT name from sqlite_master")
     if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
         raise ValueError("ratings table not in data/db.db")
 
-    new_con = sqlite3.connect("data/db.db")
-    new_cur = new_con.cursor()
 
-    (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+def report_impl(parsed_args):
+    author_limit = parsed_args.count
+
+    database_setup()
+
+    db_connection = sqlite3.connect("data/db.db")
+    db_cursor = db_connection.cursor()
+
+    (row_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
 
     print("Number of Ratings So Far:", row_count)
 
-    (row_count,) = new_cur.execute(
+    (row_count,) = db_cursor.execute(
         "select count(id) from ratings where score > 0"
     ).fetchone()
 
@@ -43,7 +47,7 @@ def report_impl(parsed_args):
     host = API_BASE_URL
 
     for idx, row in enumerate(
-        new_cur.execute(
+        db_cursor.execute(
             "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
         )
     ):

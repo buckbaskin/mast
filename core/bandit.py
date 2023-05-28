@@ -32,7 +32,7 @@ ClusteredToot = namedtuple(
 )
 
 
-def dataset_from_db(*, new_cur, max_notes):
+def dataset_from_db(*, db_cursor, max_notes):
     data = []
     data_titles = []
     target = []
@@ -40,7 +40,7 @@ def dataset_from_db(*, new_cur, max_notes):
 
     # labels = dataset.target
 
-    for row in new_cur.execute("SELECT id, author, content, score FROM ratings"):
+    for row in db_cursor.execute("SELECT id, author, content, score FROM ratings"):
         if max_notes is not None and len(data) >= max_notes:
             break
 
@@ -53,7 +53,7 @@ def dataset_from_db(*, new_cur, max_notes):
 
     rated_ids = set([d[0] for d in data_titles])
 
-    for row in new_cur.execute("SELECT id, author, content FROM toots"):
+    for row in db_cursor.execute("SELECT id, author, content FROM toots"):
         if max_notes is not None and len(data) >= max_notes:
             break
 
@@ -218,10 +218,10 @@ def stream_clusters(*, dataset, kmeans, display_count):
 
 
 def toot_cluster_rate(
-    max_single_explore, sort_by, *, new_cur, dataset, kmeans, display_count
+    max_single_explore, sort_by, *, db_cursor, dataset, kmeans, display_count
 ):
     hard_cap = max_single_explore * 2
-    existing_ratings = set((i for (i,) in new_cur.execute("SELECT id FROM ratings")))
+    existing_ratings = set((i for (i,) in db_cursor.execute("SELECT id FROM ratings")))
 
     clustered_content = filter(
         lambda x: getattr(x, f"cluster_{sort_by}") > 0 and x.id not in existing_ratings,
@@ -273,11 +273,11 @@ def toot_cluster_rate(
 
 
 def cluster_impl(toots_limit, sort_by):
-    new_con = sqlite3.connect("data/db.db")
-    new_cur = new_con.cursor()
+    db_connection = sqlite3.connect("data/db.db")
+    db_cursor = db_connection.cursor()
 
-    (toots_count,) = new_cur.execute("select count(id) from toots").fetchone()
-    (ratings_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+    (toots_count,) = db_cursor.execute("select count(id) from toots").fetchone()
+    (ratings_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
 
     assert ratings_count > 0
 
@@ -285,7 +285,7 @@ def cluster_impl(toots_limit, sort_by):
     n_clusters = toots_count // 5
     max_notes = None
 
-    dataset = dataset_from_db(new_cur=new_cur, max_notes=max_notes)
+    dataset = dataset_from_db(db_cursor=db_cursor, max_notes=max_notes)
 
     X_lsa, tokens, n_documents, original_space_centroids, kmeans = vectorize_and_reduce(
         dataset, n_clusters=n_clusters
@@ -297,7 +297,7 @@ def cluster_impl(toots_limit, sort_by):
         toot_cluster_rate(
             toots_limit,
             sort_by,
-            new_cur=new_cur,
+            db_cursor=db_cursor,
             kmeans=kmeans,
             dataset=dataset,
             display_count=display_count,
@@ -306,15 +306,15 @@ def cluster_impl(toots_limit, sort_by):
 
     logging.debug("Prepared to write %d examples" % (len(to_write),))
 
-    new_cur.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
-    new_con.commit()
+    db_cursor.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
+    db_connection.commit()
 
-    (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+    (row_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
     logging.debug(f"How it's going: Ratings So Far: {row_count}")
 
     print("\n=== Sample Positive Ratings ===")
     for idx, row in enumerate(
-        new_cur.execute(
+        db_cursor.execute(
             "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
         )
     ):
@@ -325,7 +325,7 @@ def cluster_impl(toots_limit, sort_by):
 
     print("\n=== Sample Negative Ratings ===")
     for idx, row in enumerate(
-        new_cur.execute(
+        db_cursor.execute(
             "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
         )
     ):

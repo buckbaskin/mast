@@ -9,20 +9,20 @@ from config import API_BASE_URL
 from core.utils import render_author
 
 
-def existing_ratings(*, new_cur):
-    for (id_,) in new_cur.execute(
+def existing_ratings(*, db_cursor):
+    for (id_,) in db_cursor.execute(
         "SELECT id from ratings ORDER BY 75 * id + 74 % 65537"
     ):
         yield id_
 
 
-def toot_explore(max_single_explore, *, new_cur):
+def toot_explore(max_single_explore, *, db_cursor):
     hard_cap = max_single_explore * 2
-    existing = set(existing_ratings(new_cur=new_cur))
+    existing = set(existing_ratings(db_cursor=db_cursor))
 
     count = 0
 
-    for row in new_cur.execute(
+    for row in db_cursor.execute(
         "SELECT id, author, content, (75 * id + 74) % 65537 FROM toots ORDER BY (75 * id + 74) % 65537"
     ):
         id_, author, content, hash_ = row
@@ -57,31 +57,35 @@ def toot_explore(max_single_explore, *, new_cur):
             pass
 
 
-def explore_impl(toots_limit):
+def database_setup():
     # Database Setup
-    con = sqlite3.connect("data/db.db")
-    cur = con.cursor()
+    db_connection = sqlite3.connect("data/db.db")
+    db_cursor = db_connection.cursor()
 
-    existing_tables = cur.execute("SELECT name from sqlite_master")
+    existing_tables = db_cursor.execute("SELECT name from sqlite_master")
     if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
         logging.info("Creating new table ratings")
-        cur.execute("CREATE TABLE ratings(id, author, content, score)")
+        db_cursor.execute("CREATE TABLE ratings(id, author, content, score)")
 
-    new_con = sqlite3.connect("data/db.db")
-    new_cur = new_con.cursor()
 
-    (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+def explore_impl(toots_limit):
+    database_setup()
 
-    to_write = list(toot_explore(toots_limit, new_cur=new_cur))
+    db_connection = sqlite3.connect("data/db.db")
+    db_cursor = db_connection.cursor()
 
-    new_cur.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
-    new_con.commit()
+    (row_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
 
-    (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
+    to_write = list(toot_explore(toots_limit, db_cursor=db_cursor))
+
+    db_cursor.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
+    db_connection.commit()
+
+    (row_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
 
     print("\n=== Sample Positive Ratings ===")
     for idx, row in enumerate(
-        new_cur.execute(
+        db_cursor.execute(
             "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
         )
     ):
@@ -92,7 +96,7 @@ def explore_impl(toots_limit):
 
     print("\n=== Sample Negative Ratings ===")
     for idx, row in enumerate(
-        new_cur.execute(
+        db_cursor.execute(
             "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
         )
     ):
