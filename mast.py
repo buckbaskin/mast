@@ -6,9 +6,10 @@ from core.bandit import cluster_impl
 from core.downloader import download_impl
 from core.explore import explore_impl
 from core.report import report_impl
+from core.search import search_impl
 
 
-def bandit_impl(parsed_args):
+def bandit_dispatch(parsed_args):
     user_selection = list(
         filter(
             lambda t: t[1],
@@ -35,6 +36,13 @@ def bandit_impl(parsed_args):
         "negative": partial(cluster_impl, sort_by="negative"),
         "positive": partial(cluster_impl, sort_by="positive"),
     }[user_selection](parsed_args.toots)
+
+
+def search_dispatch(parsed_args):
+    toots = parsed_args.toots
+    search_input = parsed_args.query
+
+    search_impl(toots, search_input=search_input)
 
 
 def clean_impl(parsed_args):
@@ -85,7 +93,17 @@ def main():
     bandit.add_argument(
         "-v", "--verbosity", action="count", help="Increase Logging Level"
     )
-    bandit.set_defaults(func=bandit_impl)
+    bandit.set_defaults(func=bandit_dispatch)
+
+    search = subparsers.add_parser("search")
+    search.add_argument("query", help="Search term to match in downloaded toots")
+    search.add_argument(
+        "-t", "--toots", help="How many toots to rate", type=int, default=10
+    )
+    search.add_argument(
+        "-v", "--verbosity", action="count", help="Increase Logging Level"
+    )
+    search.set_defaults(func=search_dispatch)
 
     clean = subparsers.add_parser("clean")
     clean.add_argument(
