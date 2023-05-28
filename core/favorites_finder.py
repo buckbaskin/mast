@@ -2,12 +2,14 @@
 Requires user authentication
 """
 import os
-from mastodon import Mastodon
-from pprint import pprint
-from bs4 import BeautifulSoup
-from tqdm import tqdm
 import sqlite3
 from itertools import chain
+from pprint import pprint
+
+from bs4 import BeautifulSoup
+from mastodon import Mastodon
+from tqdm import tqdm
+
 from config import API_BASE_URL
 
 # Database Setup

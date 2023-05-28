@@ -3,7 +3,6 @@ Report: Show authors whose content you like, ordered by the amount of their cont
 """
 import shutil
 import sqlite3
-
 from itertools import chain
 
 from config import API_BASE_URL

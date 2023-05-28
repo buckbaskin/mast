@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from collections import defaultdict, namedtuple
 from time import time

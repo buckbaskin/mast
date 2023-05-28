@@ -1,8 +1,10 @@
-from mastodon import Mastodon
-from bs4 import BeautifulSoup
-from tqdm import tqdm
 import sqlite3
 from itertools import chain
+
+from bs4 import BeautifulSoup
+from mastodon import Mastodon
+from tqdm import tqdm
+
 from config import API_BASE_URL
 
 
