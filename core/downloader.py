@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from itertools import chain
 
@@ -19,7 +20,7 @@ def download_impl(parsed_args):
         cur.execute("CREATE TABLE toots(id, author, content)")
 
     (min_id_in_db,) = cur.execute("SELECT min(id) from toots").fetchone()
-    print(min_id_in_db)
+    logging.debug(f"min_id_in_db {min_id_in_db}")
 
     # API Setup
     mastodon = Mastodon(
@@ -93,14 +94,14 @@ def download_impl(parsed_args):
 
     (row_count,) = new_cur.execute("select count(id) from toots").fetchone()
 
-    print("Toots So Far:", row_count, "Added:", row_count - pre_row_count)
+    logging.info(f"Toots So Far: {row_count}, Added: {row_count - pre_row_count}")
 
     for idx, row in enumerate(
         new_cur.execute("SELECT id, author, content FROM toots ORDER BY id")
     ):
         if idx > 15:
             break
-        print(row)
+        logging.info(row)
 
 
 if __name__ == "__main__":

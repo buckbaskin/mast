@@ -1,8 +1,12 @@
 """
 Explore: Randomly explore downloaded toots and rate as +1 or -1
 """
+import logging
 import sqlite3
 from itertools import chain
+
+from config import API_BASE_URL
+from core.utils import render_author
 
 
 def explore_impl(toots_limit):
@@ -12,7 +16,7 @@ def explore_impl(toots_limit):
 
     existing_tables = cur.execute("SELECT name from sqlite_master")
     if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
-        print("Creating new table ratings")
+        logging.info("Creating new table ratings")
         cur.execute("CREATE TABLE ratings(id, author, content, score)")
 
     new_con = sqlite3.connect("data/db.db")
@@ -37,6 +41,8 @@ def explore_impl(toots_limit):
         ):
             id_, author, content, hash_ = row
 
+            host = API_BASE_URL
+
             if id_ in existing:
                 continue
 
@@ -45,25 +51,23 @@ def explore_impl(toots_limit):
                 break
 
             print(
-                "\n=== Content %3d / %3d ===\n%s" % (count, max_single_explore, content)
+                "\n=== Content %3d / %3d ===\n%s\n    %s"
+                % (count, max_single_explore, content, render_author(author, host))
             )
 
             result = input("- dislike + like else skip ")
 
             if result in ["-", "=", "+", "0"]:
                 if result == "-":
-                    # print("-")
                     yield (id_, author, content, -1)
                 elif result == "=" or result == "+":
                     print("...   + bonus!")
                     max_single_explore += 1
                     yield (id_, author, content, 1)
                 elif result == "0":
-                    # print("0")
                     yield (id_, author, content, 0)
 
             else:
-                # print("skipped")
                 pass
 
     to_write = list(toot_explore(toots_limit))

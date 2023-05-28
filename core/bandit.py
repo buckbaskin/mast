@@ -85,8 +85,10 @@ def cluster_impl(toots_limit, sort_by):
     dataset = dataset_from_db()
 
     def vectorize_and_reduce(dataset):
-        print("# Dataset Summary")
-        print(f"{len(dataset.data)} documents - {len(dataset.target_names)} tags")
+        logging.info("# Dataset Summary")
+        logging.info(
+            f"{len(dataset.data)} documents - {len(dataset.target_names)} tags"
+        )
 
         # 3 or more alphanumeric, starting with a letter.
         #   Optionally grab 't (e.g. don't) endings
@@ -110,28 +112,20 @@ def cluster_impl(toots_limit, sort_by):
 
         tokens = vectorizer.get_feature_names_out()
 
-        print(f"vectorization done in {time() - t0:.3f} s")
+        logging.debug(f"vectorization done in {time() - t0:.3f} s")
 
         # After ignoring terms that appear in more than 50% of the documents (as set by
         # max_df=0.5) and terms that are not present in at least 2 documents (set by
         # min_df=2), the resulting number of unique terms n_features.
 
         n_documents = X_tfidf.shape[0]
-        print(f"n_documents: {n_documents}, n_features: {X_tfidf.shape[1]}")
+        logging.debug(f"n_documents: {n_documents}, n_features: {X_tfidf.shape[1]}")
 
         # We can additionally quantify the sparsity of the X_tfidf matrix as the
         # fraction of non-zero entries devided by the total number of elements.
-        print(
+        logging.debug(
             f"{X_tfidf.nnz / np.prod(X_tfidf.shape) * 100:05.2f} % of non-zero entries"
         )
-
-        # cx = X_tfidf.tocoo()
-        # for idx, (doc_id, token_id, value) in enumerate(zip(cx.row, cx.col, cx.data)):
-        #     if idx > 100:
-        #         break
-        #
-        #     if value > 0.25:
-        #         print(f"Doc {doc_id} Token {tokens[token_id]} : {value}")
 
         lsa = make_pipeline(
             TruncatedSVD(n_components=min(250, len(tokens))), Normalizer(copy=False)
@@ -140,15 +134,16 @@ def cluster_impl(toots_limit, sort_by):
         X_lsa = lsa.fit_transform(X_tfidf)
         explained_variance = lsa[0].explained_variance_ratio_.sum()
 
-        print(f"LSA done in {time() - t0:.3f} s")
-        print(f"Explained variance of the SVD step: {explained_variance * 100:.1f}%")
+        logging.debug(f"LSA done in {time() - t0:.3f} s")
+        logging.debug(
+            f"Explained variance of the SVD step: {explained_variance * 100:.1f}%"
+        )
 
-        print()
-        print("50 random tokens. Inspect for Stop Words")
+        logging.debug("\n50 random tokens. Inspect for Stop Words")
         rng = np.random.default_rng()
         shuffle_tokens = np.copy(tokens)
         rng.shuffle(shuffle_tokens)
-        print(", ".join(shuffle_tokens[:50]))
+        logging.debug(", ".join(shuffle_tokens[:50]))
 
         kmeans = MiniBatchKMeans(
             n_clusters=min(N_CLUSTERS, n_documents),
@@ -159,7 +154,7 @@ def cluster_impl(toots_limit, sort_by):
             random_state=1969,
         )
 
-        print("\n# Clustering")
+        logging.info("\n# Clustering")
 
         def fit_and_evaluate(kmeans, X):
             train_times = []
@@ -175,7 +170,7 @@ def cluster_impl(toots_limit, sort_by):
             #     metrics.silhouette_score(X, kmeans.labels_, sample_size=2000)
             # )
 
-            print(f"clustering done in {np.mean(train_times):.2f} s ")
+            logging.debug(f"clustering done in {np.mean(train_times):.2f} s ")
 
         fit_and_evaluate(kmeans, X_lsa)
 
@@ -294,14 +289,12 @@ def cluster_impl(toots_limit, sort_by):
 
             if result in ["-", "=", "+", "0"]:
                 if result == "-":
-                    # print("-")
                     yield (id_, author, content, -1)
                 elif result == "=" or result == "+":
                     print("...   + bonus!")
                     max_single_explore += 1
                     yield (id_, author, content, 1)
                 elif result == "0":
-                    # print("0")
                     yield (id_, author, content, 0)
 
             else:
@@ -309,13 +302,13 @@ def cluster_impl(toots_limit, sort_by):
 
     to_write = list(toot_cluster_rate(toots_limit, sort_by))
 
-    print("Prepared to write %d examples" % (len(to_write),))
+    logging.debug("Prepared to write %d examples" % (len(to_write),))
 
     new_cur.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
     new_con.commit()
 
     (row_count,) = new_cur.execute("select count(id) from ratings").fetchone()
-    print("How it's going: Ratings So Far:", row_count)
+    logging.debug(f"How it's going: Ratings So Far: {row_count}")
 
     print("\n=== Sample Positive Ratings ===")
     for idx, row in enumerate(

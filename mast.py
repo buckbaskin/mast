@@ -1,10 +1,11 @@
 import argparse
+import logging
 from functools import partial
 
-from core.explore import explore_impl
 from core.bandit import cluster_impl
-from core.report import report_impl
 from core.downloader import download_impl
+from core.explore import explore_impl
+from core.report import report_impl
 
 
 def bandit_impl(parsed_args):
@@ -51,6 +52,9 @@ def main():
     download.add_argument(
         "-t", "--toots", help="How many toots to download", type=int, default=1000
     )
+    download.add_argument(
+        "-v", "--verbosity", action="count", help="Increase Logging Level"
+    )
     download.set_defaults(func=download_impl)
 
     bandit = subparsers.add_parser("bandit")
@@ -78,11 +82,17 @@ def main():
     bandit.add_argument(
         "-t", "--toots", help="How many toots to rate", type=int, default=10
     )
+    bandit.add_argument(
+        "-v", "--verbosity", action="count", help="Increase Logging Level"
+    )
     bandit.set_defaults(func=bandit_impl)
 
     clean = subparsers.add_parser("clean")
     clean.add_argument(
         "-f", "--force", help="Don't ask for confirmation", action="store_true"
+    )
+    clean.add_argument(
+        "-v", "--verbosity", action="count", help="Increase Logging Level"
     )
     clean.set_defaults(func=clean_impl)
 
@@ -90,9 +100,18 @@ def main():
     report.add_argument(
         "-n", "--count", help="Number of authors to report", type=int, default=20
     )
+    report.add_argument(
+        "-v", "--verbosity", action="count", help="Increase Logging Level"
+    )
     report.set_defaults(func=report_impl)
 
     args = parser.parse_args()
+    if args.verbosity is None:
+        logging.basicConfig(level=logging.WARNING)
+    elif args.verbosity == 1:
+        logging.basicConfig(level=logging.INFO)
+    elif args.verbosity >= 2:
+        logging.basicConfig(level=logging.DEBUG)
     args.func(args)
 
 
