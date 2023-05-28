@@ -3,7 +3,7 @@ import sqlite3
 from itertools import chain
 
 from bs4 import BeautifulSoup
-from mastodon import Mastodon
+from mastodon import Mastodon  # type: ignore
 from tqdm import tqdm
 
 from config import API_BASE_URL

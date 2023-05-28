@@ -101,4 +101,4 @@ def explore_impl(toots_limit):
 
 
 if __name__ == "__main__":
-    explore_impl()
+    explore_impl(20)

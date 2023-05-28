@@ -4,11 +4,11 @@ from collections import defaultdict, namedtuple
 from time import time
 
 import numpy as np
-from sklearn.cluster import MiniBatchKMeans
-from sklearn.decomposition import TruncatedSVD
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import Normalizer
+from sklearn.cluster import MiniBatchKMeans  # type: ignore
+from sklearn.decomposition import TruncatedSVD  # type: ignore
+from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
+from sklearn.pipeline import make_pipeline  # type: ignore
+from sklearn.preprocessing import Normalizer  # type: ignore
 
 from config import API_BASE_URL
 from core.stopwords import STOP_WORDS
