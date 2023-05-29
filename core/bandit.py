@@ -10,9 +10,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore
 from sklearn.pipeline import make_pipeline  # type: ignore
 from sklearn.preprocessing import Normalizer  # type: ignore
 
-from config import API_BASE_URL
 from core.stopwords import STOP_WORDS
-from core.utils import existing_ratings, render_author
+from core.utils import existing_ratings, label_user_input
 
 TootContent = namedtuple(
     "TootContent", ["data", "data_titles", "target", "target_names"]
@@ -222,7 +221,6 @@ def stream_clusters(*, dataset, kmeans, display_count):
 def toot_cluster_rate(
     max_single_explore, sort_by, *, db_cursor, dataset, kmeans, display_count
 ):
-    hard_cap = max_single_explore * 2
     existing_rating_ids = existing_ratings(db_cursor)
 
     clustered_content = filter(
@@ -231,48 +229,11 @@ def toot_cluster_rate(
         stream_clusters(dataset=dataset, kmeans=kmeans, display_count=display_count),
     )
 
-    count = 0
-
-    for row in clustered_content:
-        id_, author, content, confusion, positive, negative, cluster_id = row
-
-        count += 1
-        if count > max_single_explore or count > hard_cap:
-            break
-
-        rating = {
-            "positive": positive,
-            "negative": negative,
-            "confusion": confusion,
-        }[sort_by]
-
-        host = API_BASE_URL
-        print(
-            "\n=== Content (%s %3d) %3d / %3d ===\n%s\n    %s"
-            % (
-                sort_by,
-                rating,
-                count,
-                max_single_explore,
-                content,
-                render_author(author, host),
-            )
-        )
-
-        result = input("- dislike + like else skip ")
-
-        if result in ["-", "=", "+", "0"]:
-            if result == "-":
-                yield (id_, author, content, -1)
-            elif result == "=" or result == "+":
-                print("...   + bonus!")
-                max_single_explore += 1
-                yield (id_, author, content, 1)
-            elif result == "0":
-                yield (id_, author, content, 0)
-
-        else:
-            pass
+    yield from label_user_input(
+        db_cursor,
+        ((c.id, c.author, c.content) for c in clustered_content),
+        max_single_labelling=max_single_explore,
+    )
 
 
 def cluster_impl(toots_limit, sort_by):

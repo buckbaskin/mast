@@ -22,8 +22,10 @@ def existing_ratings(db_cursor):
     return set(existing_ratings_impl(db_cursor))
 
 
-def label_user_input(db_cursor, unlabeled_toot_stream, *, max_single_search):
-    hard_cap = max_single_search * 2
+def label_user_input(
+    db_cursor, unlabeled_toot_stream, *, max_single_labelling, suppress_errors=False
+):
+    hard_cap = max_single_labelling * 2
     existing_rating_ids = existing_ratings(db_cursor)
 
     skipped = 0
@@ -38,10 +40,12 @@ def label_user_input(db_cursor, unlabeled_toot_stream, *, max_single_search):
         try:
             id_, author, content = row
         except ValueError:
-            logging.debug(f"row {type(row)} {[type(i) for i in row]} {row}")
-            error_rows.append(row)
-            skipped += 1
-            continue
+            if suppress_errors:
+                logging.debug(f"row {type(row)} {[type(i) for i in row]} {row}")
+                error_rows.append(row)
+                skipped += 1
+                continue
+            raise
 
         host = API_BASE_URL
 
@@ -49,12 +53,12 @@ def label_user_input(db_cursor, unlabeled_toot_stream, *, max_single_search):
             skipped += 1
             continue
 
-        if idx > max_single_search or idx > hard_cap:
+        if idx > max_single_labelling or idx > hard_cap:
             break
 
         print(
             "\n=== Content %3d / %3d ===\n%s\n    %s"
-            % (idx, max_single_search, content, render_author(author, host))
+            % (idx, max_single_labelling, content, render_author(author, host))
         )
 
         result = input("- dislike + like else skip ")
@@ -64,7 +68,7 @@ def label_user_input(db_cursor, unlabeled_toot_stream, *, max_single_search):
                 yield (id_, author, content, -1)
             elif result == "=" or result == "+":
                 print("...   + bonus!")
-                max_single_search += 1
+                max_single_labelling += 1
                 yield (id_, author, content, 1)
             elif result == "0":
                 yield (id_, author, content, 0)

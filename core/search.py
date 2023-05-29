@@ -8,7 +8,7 @@ from itertools import chain
 from core.utils import label_user_input
 
 
-def toot_search(max_single_search, *, db_cursor, search_input):
+def toot_search(max_single_labelling, *, db_cursor, search_input):
     search_matcher = search_input.lower().split()
     search_matcher = "%" + "%".join(search_matcher) + "%"
 
@@ -19,7 +19,7 @@ def toot_search(max_single_search, *, db_cursor, search_input):
     yield from label_user_input(
         db_cursor,
         db_cursor.execute(sql_query_string).fetchall(),
-        max_single_search=max_single_search,
+        max_single_labelling=max_single_labelling,
     )
 
 
