@@ -5,65 +5,22 @@ import logging
 import sqlite3
 from itertools import chain
 
-from config import API_BASE_URL
-from core.utils import render_author
-
-
-def existing_ratings(*, db_cursor):
-    for (id_,) in db_cursor.execute(
-        "SELECT id from ratings ORDER BY 75 * id + 74 % 65537"
-    ):
-        yield id_
+from core.utils import label_user_input
 
 
 def toot_search(max_single_search, *, db_cursor, search_input):
-    hard_cap = max_single_search * 2
-    existing = set(existing_ratings(db_cursor=db_cursor))
-
-    count = 0
-
     search_matcher = search_input.lower().split()
     search_matcher = "%" + "%".join(search_matcher) + "%"
 
-    sql_query_string = f"SELECT id, author, content, (75 * id + 74) % 65537 FROM toots WHERE LOWER(content) LIKE '{search_matcher}' ORDER BY (75 * id + 74) % 65537"
+    sql_query_string = f"SELECT id, author, content FROM toots WHERE LOWER(content) LIKE '{search_matcher}' ORDER BY (75 * id + 74) % 65537"
 
-    results_count = 0
-    for row in db_cursor.execute(sql_query_string):
-        results_count += 1
+    logging.debug(f"SQL Query String: {sql_query_string}")
 
-        id_, author, content, hash_ = row
-
-        host = API_BASE_URL
-
-        if id_ in existing:
-            continue
-
-        count += 1
-        if count > max_single_search or count > hard_cap:
-            break
-
-        print(
-            "\n=== Content %3d / %3d ===\n%s\n    %s"
-            % (count, max_single_search, content, render_author(author, host))
-        )
-
-        result = input("- dislike + like else skip ")
-
-        if result in ["-", "=", "+", "0"]:
-            if result == "-":
-                yield (id_, author, content, -1)
-            elif result == "=" or result == "+":
-                print("...   + bonus!")
-                max_single_search += 1
-                yield (id_, author, content, 1)
-            elif result == "0":
-                yield (id_, author, content, 0)
-
-        else:
-            pass
-
-    if results_count == 0:
-        print("No Results Found")
+    yield from label_user_input(
+        db_cursor,
+        db_cursor.execute(sql_query_string).fetchall(),
+        max_single_search=max_single_search,
+    )
 
 
 def database_setup():
@@ -101,7 +58,7 @@ def search_impl(toots_limit, *, search_input):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
-            )
+            ).fetchall()
         ):
             id_, author, content, score, shuffler = row
             print("\n", score, content)
@@ -112,7 +69,7 @@ def search_impl(toots_limit, *, search_input):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
-            )
+            ).fetchall()
         ):
             id_, author, content, score, shuffler = row
             print("\n", score, content)

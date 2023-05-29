@@ -6,14 +6,7 @@ import sqlite3
 from itertools import chain
 
 from config import API_BASE_URL
-from core.utils import render_author
-
-
-def existing_ratings(*, db_cursor):
-    for (id_,) in db_cursor.execute(
-        "SELECT id from ratings ORDER BY 75 * id + 74 % 65537"
-    ):
-        yield id_
+from core.utils import existing_ratings, render_author
 
 
 def toot_explore(max_single_explore, *, db_cursor):
@@ -24,7 +17,7 @@ def toot_explore(max_single_explore, *, db_cursor):
 
     for row in db_cursor.execute(
         "SELECT id, author, content, (75 * id + 74) % 65537 FROM toots ORDER BY (75 * id + 74) % 65537"
-    ):
+    ).fetchall():
         id_, author, content, hash_ = row
 
         host = API_BASE_URL
@@ -62,8 +55,8 @@ def database_setup():
     with sqlite3.connect("data/db.db") as db_connection:
         db_cursor = db_connection.cursor()
 
-        existing_tables = db_cursor.execute("SELECT name from sqlite_master")
-        if "ratings" not in chain.from_iterable(existing_tables.fetchall()):
+        existing_tables = db_cursor.execute("SELECT name from sqlite_master").fetchall()
+        if "ratings" not in chain.from_iterable(existing_tables):
             logging.info("Creating new table ratings")
             db_cursor.execute("CREATE TABLE ratings(id, author, content, score)")
 
@@ -87,7 +80,7 @@ def explore_impl(toots_limit):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
-            )
+            ).fetchall()
         ):
             id_, author, content, score, shuffler = row
             print("\n", score, content)
@@ -98,7 +91,7 @@ def explore_impl(toots_limit):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
-            )
+            ).fetchall()
         ):
             id_, author, content, score, shuffler = row
             print("\n", score, content)

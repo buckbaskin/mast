@@ -12,7 +12,7 @@ from sklearn.preprocessing import Normalizer  # type: ignore
 
 from config import API_BASE_URL
 from core.stopwords import STOP_WORDS
-from core.utils import render_author
+from core.utils import existing_ratings, render_author
 
 TootContent = namedtuple(
     "TootContent", ["data", "data_titles", "target", "target_names"]
@@ -40,7 +40,9 @@ def dataset_from_db(*, db_cursor, max_notes):
 
     # labels = dataset.target
 
-    for row in db_cursor.execute("SELECT id, author, content, score FROM ratings"):
+    for row in db_cursor.execute(
+        "SELECT id, author, content, score FROM ratings"
+    ).fetchall():
         if max_notes is not None and len(data) >= max_notes:
             break
 
@@ -53,7 +55,7 @@ def dataset_from_db(*, db_cursor, max_notes):
 
     rated_ids = set([d[0] for d in data_titles])
 
-    for row in db_cursor.execute("SELECT id, author, content FROM toots"):
+    for row in db_cursor.execute("SELECT id, author, content FROM toots").fetchall():
         if max_notes is not None and len(data) >= max_notes:
             break
 
@@ -221,10 +223,11 @@ def toot_cluster_rate(
     max_single_explore, sort_by, *, db_cursor, dataset, kmeans, display_count
 ):
     hard_cap = max_single_explore * 2
-    existing_ratings = set((i for (i,) in db_cursor.execute("SELECT id FROM ratings")))
+    existing_rating_ids = existing_ratings(db_cursor)
 
     clustered_content = filter(
-        lambda x: getattr(x, f"cluster_{sort_by}") > 0 and x.id not in existing_ratings,
+        lambda x: getattr(x, f"cluster_{sort_by}") > 0
+        and x.id not in existing_rating_ids,
         stream_clusters(dataset=dataset, kmeans=kmeans, display_count=display_count),
     )
 
@@ -320,7 +323,7 @@ def cluster_impl(toots_limit, sort_by):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
-            )
+            ).fetchall()
         ):
             id_, author, content, score, shuffler = row
             print("\n", score, content)
@@ -331,7 +334,7 @@ def cluster_impl(toots_limit, sort_by):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
-            )
+            ).fetchall()
         ):
             id_, author, content, score, shuffler = row
             print("\n", score, content)

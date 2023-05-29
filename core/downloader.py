@@ -80,8 +80,8 @@ def as_db_tuples(toots_limit, *, mastodon, min_id_in_db):
 def database_setup():
     with sqlite3.connect("data/db.db") as db_connection:
         db_cursor = db_connection.cursor()
-        existing_tables = db_cursor.execute("SELECT name from sqlite_master")
-        if "toots" not in chain.from_iterable(existing_tables.fetchall()):
+        existing_tables = db_cursor.execute("SELECT name from sqlite_master").fetchall()
+        if "toots" not in chain.from_iterable(existing_tables):
             db_cursor.execute("CREATE TABLE toots(id, author, content)")
 
         (min_id_in_db,) = db_cursor.execute("SELECT min(id) from toots").fetchone()

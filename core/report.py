@@ -49,7 +49,7 @@ def report_impl(parsed_args):
         for idx, row in enumerate(
             db_cursor.execute(
                 "SELECT author, count(author), max(content) FROM ratings WHERE score > 0 GROUP BY author ORDER BY count(author) DESC"
-            )
+            ).fetchall()
         ):
             if idx >= author_limit:
                 break
