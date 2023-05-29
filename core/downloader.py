@@ -45,11 +45,11 @@ def toot_stream(m, *args, **kwargs):
 
 
 def existing_ids_in_db():
-    db_connection = sqlite3.connect("data/db.db")
-    db_cursor = db_connection.cursor()
-    return set(
-        chain.from_iterable(db_cursor.execute("SELECT id from toots").fetchall())
-    )
+    with sqlite3.connect("data/db.db") as db_connection:
+        db_cursor = db_connection.cursor()
+        return set(
+            chain.from_iterable(db_cursor.execute("SELECT id from toots").fetchall())
+        )
 
 
 def as_db_tuples(toots_limit, *, mastodon, min_id_in_db):
@@ -78,16 +78,16 @@ def as_db_tuples(toots_limit, *, mastodon, min_id_in_db):
 
 
 def database_setup():
-    db_connection = sqlite3.connect("data/db.db")
-    db_cursor = db_connection.cursor()
-    existing_tables = db_cursor.execute("SELECT name from sqlite_master")
-    if "toots" not in chain.from_iterable(existing_tables.fetchall()):
-        db_cursor.execute("CREATE TABLE toots(id, author, content)")
+    with sqlite3.connect("data/db.db") as db_connection:
+        db_cursor = db_connection.cursor()
+        existing_tables = db_cursor.execute("SELECT name from sqlite_master")
+        if "toots" not in chain.from_iterable(existing_tables.fetchall()):
+            db_cursor.execute("CREATE TABLE toots(id, author, content)")
 
-    (min_id_in_db,) = db_cursor.execute("SELECT min(id) from toots").fetchone()
-    logging.debug(f"min_id_in_db {min_id_in_db}")
+        (min_id_in_db,) = db_cursor.execute("SELECT min(id) from toots").fetchone()
+        logging.debug(f"min_id_in_db {min_id_in_db}")
 
-    return min_id_in_db
+        return min_id_in_db
 
 
 def download_new_toots(toots_limit):
@@ -99,11 +99,10 @@ def download_new_toots(toots_limit):
         ratelimit_pacefactor=0.95,
     )
 
-    db_connection = sqlite3.connect("data/db.db")
-    db_cursor = db_connection.cursor()
-    (pre_row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
+    with sqlite3.connect("data/db.db") as db_connection:
+        db_cursor = db_connection.cursor()
+        (pre_row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
 
-    try:
         db_cursor.executemany(
             "INSERT INTO toots VALUES(?, ?, ?)",
             as_db_tuples(toots_limit, mastodon=mastodon, min_id_in_db=None),
@@ -111,10 +110,6 @@ def download_new_toots(toots_limit):
         db_connection.commit()
 
         (post_row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
-    finally:
-        db_connection.close()
-        del db_cursor
-        del db_connection
 
     added_count = post_row_count - pre_row_count
 
@@ -135,11 +130,10 @@ def download_old_toots(toots_limit, min_id_in_db):
         ratelimit_pacefactor=0.95,
     )
 
-    db_connection = sqlite3.connect("data/db.db")
-    db_cursor = db_connection.cursor()
-    (pre_row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
+    with sqlite3.connect("data/db.db") as db_connection:
+        db_cursor = db_connection.cursor()
+        (pre_row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
 
-    try:
         db_cursor.executemany(
             "INSERT INTO toots VALUES(?, ?, ?)",
             as_db_tuples(toots_limit, mastodon=mastodon, min_id_in_db=min_id_in_db),
@@ -147,10 +141,6 @@ def download_old_toots(toots_limit, min_id_in_db):
         db_connection.commit()
 
         (post_row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
-    finally:
-        db_connection.close()
-        del db_cursor
-        del db_connection
 
     added_count = post_row_count - pre_row_count
 
@@ -172,24 +162,24 @@ def download_impl(parsed_args):
         toots_limit=stats_new["remaining"], min_id_in_db=min_id_in_db
     )
 
-    db_connection = sqlite3.connect("data/db.db")
-    db_cursor = db_connection.cursor()
+    with sqlite3.connect("data/db.db") as db_connection:
+        db_cursor = db_connection.cursor()
 
-    (row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
+        (row_count,) = db_cursor.execute("select count(id) from toots").fetchone()
 
-    logging.info(
-        f"New: {stats_new['added_count']} Backfill: {stats_old['added_count']}"
-    )
-    logging.info(
-        f"Toots So Far: {row_count}, Added: {row_count - stats_new['pre_row_count']}"
-    )
+        logging.info(
+            f"New: {stats_new['added_count']} Backfill: {stats_old['added_count']}"
+        )
+        logging.info(
+            f"Toots So Far: {row_count}, Added: {row_count - stats_new['pre_row_count']}"
+        )
 
-    for idx, row in enumerate(
-        db_cursor.execute("SELECT id, author, content FROM toots ORDER BY id")
-    ):
-        if idx > 15:
-            break
-        logging.info(row)
+        for idx, row in enumerate(
+            db_cursor.execute("SELECT id, author, content FROM toots ORDER BY id")
+        ):
+            if idx > 15:
+                break
+            logging.info(row)
 
 
 if __name__ == "__main__":

@@ -273,66 +273,70 @@ def toot_cluster_rate(
 
 
 def cluster_impl(toots_limit, sort_by):
-    db_connection = sqlite3.connect("data/db.db")
-    db_cursor = db_connection.cursor()
+    with sqlite3.connect("data/db.db") as db_connection:
+        db_cursor = db_connection.cursor()
 
-    (toots_count,) = db_cursor.execute("select count(id) from toots").fetchone()
-    (ratings_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
+        (toots_count,) = db_cursor.execute("select count(id) from toots").fetchone()
+        (ratings_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
 
-    assert ratings_count > 0
+        assert ratings_count > 0
 
-    # Nominally, find N=5 similar toots per cluster
-    n_clusters = toots_count // 5
-    max_notes = None
+        # Nominally, find N=5 similar toots per cluster
+        n_clusters = toots_count // 5
+        max_notes = None
 
-    dataset = dataset_from_db(db_cursor=db_cursor, max_notes=max_notes)
+        dataset = dataset_from_db(db_cursor=db_cursor, max_notes=max_notes)
 
-    X_lsa, tokens, n_documents, original_space_centroids, kmeans = vectorize_and_reduce(
-        dataset, n_clusters=n_clusters
-    )
+        (
+            X_lsa,
+            tokens,
+            n_documents,
+            original_space_centroids,
+            kmeans,
+        ) = vectorize_and_reduce(dataset, n_clusters=n_clusters)
 
-    display_count = min(n_clusters, n_documents)
+        display_count = min(n_clusters, n_documents)
 
-    to_write = list(
-        toot_cluster_rate(
-            toots_limit,
-            sort_by,
-            db_cursor=db_cursor,
-            kmeans=kmeans,
-            dataset=dataset,
-            display_count=display_count,
+        to_write = list(
+            toot_cluster_rate(
+                toots_limit,
+                sort_by,
+                db_cursor=db_cursor,
+                kmeans=kmeans,
+                dataset=dataset,
+                display_count=display_count,
+            )
         )
-    )
 
-    logging.debug("Prepared to write %d examples" % (len(to_write),))
+        logging.debug("Prepared to write %d examples" % (len(to_write),))
 
-    db_cursor.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
-    db_connection.commit()
+        db_cursor.executemany("INSERT INTO ratings VALUES(?, ?, ?, ?)", to_write)
+        db_connection.commit()
 
-    (row_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
-    logging.debug(f"How it's going: Ratings So Far: {row_count}")
+        (row_count,) = db_cursor.execute("select count(id) from ratings").fetchone()
+        logging.debug(f"How it's going: Ratings So Far: {row_count}")
 
-    print("\n=== Sample Positive Ratings ===")
-    for idx, row in enumerate(
-        db_cursor.execute(
-            "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
-        )
-    ):
-        id_, author, content, score, shuffler = row
-        print("\n", score, content)
-        if idx > 3:
-            break
+        print("\n=== Sample Positive Ratings ===")
+        for idx, row in enumerate(
+            db_cursor.execute(
+                "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score > 0 ORDER BY (75 * id + 74) % 65537 DESC"
+            )
+        ):
+            id_, author, content, score, shuffler = row
+            print("\n", score, content)
+            if idx > 3:
+                break
 
-    print("\n=== Sample Negative Ratings ===")
-    for idx, row in enumerate(
-        db_cursor.execute(
-            "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
-        )
-    ):
-        id_, author, content, score, shuffler = row
-        print("\n", score, content)
-        if idx > 3:
-            break
+        print("\n=== Sample Negative Ratings ===")
+        for idx, row in enumerate(
+            db_cursor.execute(
+                "SELECT id, author, content, score, (75 * id + 74) % 65537 FROM ratings where score < 0 ORDER BY (75 * id + 74) % 65537 DESC"
+            )
+        ):
+            id_, author, content, score, shuffler = row
+            print("\n", score, content)
+            if idx > 3:
+                break
 
 
 if __name__ == "__main__":
