@@ -34,7 +34,9 @@ def label_user_input(
 
     empty_results = True
 
-    for idx, row in enumerate(unlabeled_toot_stream):
+    new_labels = 0
+
+    for row in unlabeled_toot_stream:
         empty_results = False
 
         try:
@@ -53,12 +55,16 @@ def label_user_input(
             skipped += 1
             continue
 
-        if idx > max_single_labelling or idx > hard_cap:
+        if new_labels >= max_single_labelling or new_labels >= hard_cap:
+            logging.debug(
+                f"Terminating. {new_labels} > {max_single_labelling} + {skipped} or {new_labels} > {hard_cap}"
+            )
             break
 
+        new_labels += 1
         print(
             "\n=== Content %3d / %3d ===\n%s\n    %s"
-            % (idx, max_single_labelling, content, render_author(author, host))
+            % (new_labels, max_single_labelling, content, render_author(author, host))
         )
 
         result = input("- dislike + like else skip ")

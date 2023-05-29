@@ -5,49 +5,17 @@ import logging
 import sqlite3
 from itertools import chain
 
-from config import API_BASE_URL
-from core.utils import existing_ratings, render_author
+from core.utils import label_user_input
 
 
 def toot_explore(max_single_explore, *, db_cursor):
-    hard_cap = max_single_explore * 2
-    existing = set(existing_ratings(db_cursor=db_cursor))
-
-    count = 0
-
-    for row in db_cursor.execute(
-        "SELECT id, author, content, (75 * id + 74) % 65537 FROM toots ORDER BY (75 * id + 74) % 65537"
-    ).fetchall():
-        id_, author, content, hash_ = row
-
-        host = API_BASE_URL
-
-        if id_ in existing:
-            continue
-
-        count += 1
-        if count > max_single_explore or count > hard_cap:
-            break
-
-        print(
-            "\n=== Content %3d / %3d ===\n%s\n    %s"
-            % (count, max_single_explore, content, render_author(author, host))
-        )
-
-        result = input("- dislike + like else skip ")
-
-        if result in ["-", "=", "+", "0"]:
-            if result == "-":
-                yield (id_, author, content, -1)
-            elif result == "=" or result == "+":
-                print("...   + bonus!")
-                max_single_explore += 1
-                yield (id_, author, content, 1)
-            elif result == "0":
-                yield (id_, author, content, 0)
-
-        else:
-            pass
+    yield from label_user_input(
+        db_cursor,
+        db_cursor.execute(
+            "SELECT id, author, content FROM toots ORDER BY (75 * id + 74) % 65537"
+        ).fetchall(),
+        max_single_labelling=max_single_explore,
+    )
 
 
 def database_setup():
